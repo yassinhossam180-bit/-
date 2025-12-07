@@ -1,0 +1,1354 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>مدرسة مروان المهجورة - جمجمة محمد</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #020308;
+        color: #fff;
+        direction: rtl;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        overflow: hidden;
+    }
+    #gameContainer {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(circle at top, #272c3f 0%, #020308 65%);
+    }
+    canvas {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: #020308;
+        image-rendering: pixelated;
+        border: 2px solid #111;
+        box-shadow: 0 0 40px rgba(0,0,0,0.9);
+    }
+    #overlayUI {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        color: #fff;
+    }
+    .ui-top-left {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+        font-size: 13px;
+        text-shadow: 0 0 6px rgba(0,0,0,0.9);
+    }
+    .ui-top-right {
+        position: absolute;
+        right: 12px;
+        top: 10px;
+        font-size: 13px;
+        text-align: left;
+        text-shadow: 0 0 6px rgba(0,0,0,0.9);
+    }
+    .ui-bottom-center {
+        position: absolute;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        font-size: 13px;
+        text-align: center;
+        text-shadow: 0 0 6px rgba(0,0,0,0.9);
+    }
+    #crosshair {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 14px;
+        height: 14px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+    }
+    #crosshair::before,
+    #crosshair::after {
+        content: "";
+        position: absolute;
+        background: rgba(255,255,255,0.85);
+    }
+    #crosshair::before {
+        width: 10px;
+        height: 2px;
+        left: 2px;
+        top: 6px;
+    }
+    #crosshair::after {
+        width: 2px;
+        height: 10px;
+        left: 6px;
+        top: 2px;
+    }
+    #mainMenu,
+    #pauseMenu,
+    #endScreen,
+    #jumpscareScreen,
+    #huntMessage,
+    #bossOverlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.9);
+        pointer-events: auto;
+    }
+    #mainMenu { display: flex; }
+    .menu-box {
+        background: rgba(10,10,20,0.97);
+        border: 1px solid #555;
+        padding: 20px 26px;
+        max-width: 540px;
+        border-radius: 8px;
+        box-shadow: 0 0 26px rgba(0,0,0,0.85);
+        text-align: center;
+    }
+    .menu-title {
+        font-size: 22px;
+        letter-spacing: 2px;
+        margin-bottom: 10px;
+    }
+    .menu-sub {
+        font-size: 14px;
+        margin-bottom: 8px;
+        opacity: 0.9;
+    }
+    .menu-text {
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 10px;
+        opacity: 0.9;
+        text-align: right;
+    }
+    .menu-key {
+        color: #ffd86b;
+        font-weight: bold;
+    }
+    .small {
+        font-size: 11px;
+        opacity: 0.8;
+    }
+    #endTitle {
+        margin-bottom: 8px;
+    }
+    #huntMessage {
+        background: rgba(0,0,0,0.75);
+        pointer-events: none;
+    }
+    #huntMessage .menu-box {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+    #huntMessageText {
+        font-size: 26px;
+        font-weight: bold;
+        color: #ff5555;
+        text-shadow: 0 0 20px #000;
+    }
+    #bossOverlay {
+        background: rgba(0,0,0,0.92);
+        pointer-events: none;
+    }
+    #bossOverlay .menu-box {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+    #bossText {
+        font-size: 20px;
+        margin-bottom: 8px;
+    }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <div id="overlayUI">
+        <div class="ui-top-left">
+            <div>الهدف: <span id="objectiveText">استكشف المدرسة وابحث عن الجمجمة.</span></div>
+            <div>السنّارة: <span id="hookText">10 / 10</span></div>
+            <div>حالة مروان: <span id="dangerText">هادئ</span></div>
+        </div>
+        <div class="ui-top-right">
+            <div>طاقة الجري: <span id="staminaText">100</span></div>
+            <div>ضوضاء: <span id="noiseText">0</span></div>
+        </div>
+        <div class="ui-bottom-center">
+            <div>الحركة: W A S D &nbsp; النظر: الماوس &nbsp; الجري: Shift &nbsp; قفز: Space</div>
+            <div>السنّارة: زر الفأرة الأيسر &nbsp; رمي الجمجمة: F &nbsp; تفاعل: E &nbsp; إيقاف مؤقت: Esc</div>
+        </div>
+        <div id="crosshair"></div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="mainMenu">
+        <div class="menu-box">
+            <div class="menu-title">مدرسة مروان المهجورة</div>
+            <div class="menu-sub">جمجمة محمد - تجربة الرعب</div>
+            <div class="menu-text">
+                في حادثة غريبة في رحلة معمل الفيزياء، مات كل أطفال الفصل… وبقي المعلّم <strong>مروان</strong> وحده.  
+                بعدها اختفى، والناس بتقول إن روحه معلّقة في المدرسة، ومعاه الأطفال: <strong>ميرو</strong>، <strong>لالا</strong>، <strong>محمد</strong>.
+            </div>
+            <div class="menu-text">
+                الليلة دخلت المدرسة لوحدك.  
+                هدفك مش الهروب بس…  
+                لازم تلاقي <strong>جمجمة</strong> غريبة، وترميها على مروان.  
+                لو أصابته، هتنتقل لعالم 2D، وتواجه <strong>محمد</strong> في معركة جماجم.
+            </div>
+            <div class="menu-text">
+                <strong>التحكّم</strong><br/>
+                W A S D: حركة &nbsp; الماوس: نظر &nbsp; Shift: جري &nbsp; Space: قفزة بسيطة<br/>
+                زر الفأرة الأيسر: ضرب بالسنّارة (Limit 10 يتجدد كل 5 ثواني)<br/>
+                F: رمي الجمجمة (لو معاك) &nbsp; E: تفاعل مع الجمجمة / باب المدرسة
+            </div>
+            <div class="menu-text" style="text-align:center;">
+                <span class="menu-key">Enter</span> ابدأ الرعب &nbsp; | &nbsp;
+                <span class="menu-key">M</span> كتم / تشغيل الصوت
+            </div>
+            <div class="small">
+                لو وصلت لباب المدرسة وهو بينده للعيال → BAD ENDING (النهاية السيئة).  
+                لو هزمت محمد وبعدين خرجت → GOOD ENDING.
+            </div>
+        </div>
+    </div>
+
+    <!-- PAUSE MENU -->
+    <div id="pauseMenu">
+        <div class="menu-box">
+            <div class="menu-title">إيقاف مؤقت</div>
+            <div class="menu-text" style="text-align:center;">
+                <span class="menu-key">Esc</span> مواصلة اللعب &nbsp; | &nbsp;
+                <span class="menu-key">R</span> إعادة من البداية &nbsp; | &nbsp;
+                <span class="menu-key">M</span> كتم / تشغيل الصوت
+            </div>
+            <div class="small">
+                المدرسة واقفة… بس مروان مش بينسى.
+            </div>
+        </div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen">
+        <div class="menu-box">
+            <div id="endTitle" class="menu-title">النهاية</div>
+            <div id="endText" class="menu-text">
+                نص نهاية مؤقت.
+            </div>
+            <div class="menu-text" style="text-align:center;">
+                <span class="menu-key">Enter</span> اللعب من جديد
+            </div>
+        </div>
+    </div>
+
+    <!-- HUNT MESSAGE -->
+    <div id="huntMessage">
+        <div class="menu-box">
+            <div id="huntMessageText">يا تهرب يا تتاكل... اجريييييييي</div>
+        </div>
+    </div>
+
+    <!-- BOSS OVERLAY (instructions) -->
+    <div id="bossOverlay">
+        <div class="menu-box">
+            <div id="bossText">
+                معركة محمد 2D: اتحرّك يمين/شمال بالأسهم أو A/D،  
+                واضغط F علشان ترمي جماجم.  
+                اضرب محمد 10 مرات، وخد بالك من مروانات الصغار!
+            </div>
+        </div>
+    </div>
+
+    <!-- JUMPSCARE -->
+    <div id="jumpscareScreen">
+        <div>مــــروان: أكلــــــــــك!</div>
+    </div>
+</div>
+
+<script>
+/* ==========================
+   أدوات عامة
+   ========================== */
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+
+const objectiveText=document.getElementById('objectiveText');
+const hookText=document.getElementById('hookText');
+const staminaText=document.getElementById('staminaText');
+const noiseText=document.getElementById('noiseText');
+const dangerText=document.getElementById('dangerText');
+
+const mainMenu=document.getElementById('mainMenu');
+const pauseMenu=document.getElementById('pauseMenu');
+const endScreen=document.getElementById('endScreen');
+const endTitle=document.getElementById('endTitle');
+const endText=document.getElementById('endText');
+const huntMessage=document.getElementById('huntMessage');
+const bossOverlay=document.getElementById('bossOverlay');
+const jumpscareScreen=document.getElementById('jumpscareScreen');
+
+let gameRunning=false;
+let paused=false;
+let gameEnded=false;
+let inBoss=false;
+let masterMuted=false;
+
+/* ==========================
+   Sound system
+   ========================== */
+class SoundSystem{
+    constructor(){this.ctx=null;}
+    ensure(){
+        if(!this.ctx){
+            this.ctx=new (window.AudioContext||window.webkitAudioContext)();
+        }
+    }
+    beep(freq,dur,type="square",vol=0.2){
+        if(masterMuted) return;
+        this.ensure();
+        const ctx=this.ctx;
+        const now=ctx.currentTime;
+        const osc=ctx.createOscillator();
+        const gain=ctx.createGain();
+        osc.type=type;
+        osc.frequency.setValueAtTime(freq,now);
+        gain.gain.value=vol;
+        gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now+dur+0.05);
+    }
+    step(){this.beep(130+Math.random()*30,0.04,"square",0.15);}
+    hook(){this.beep(380,0.1,"sawtooth",0.25);}
+    hookHit(){this.beep(220,0.1,"square",0.24);}
+    skullThrow(){this.beep(500,0.12,"triangle",0.25);}
+    skullHit(){this.beep(700,0.12,"square",0.3);}
+    door(){this.beep(220,0.14,"triangle",0.25);}
+    error(){this.beep(110,0.3,"square",0.3);}
+    scare(){this.beep(60,0.6,"sawtooth",0.5);}
+    marwanStep(){this.beep(90+Math.random()*20,0.12,"square",0.25);}
+    ambience(){this.beep(50,1.5,"sine",0.05);}
+}
+const SFX=new SoundSystem();
+
+/* تسجيلات صوت حقيقية ممكن تربطها انت هنا لاحقًا */
+function playMarwanEatVoice(){
+    // TODO: ضع كود تشغيل صوت "مروان أكلك" من ملفك
+    SFX.scare();
+}
+function playMarwanChaseVoice(){
+    // TODO: ضع كود صوت مروان وهو يطارد
+    SFX.ambience();
+}
+
+/* ==========================
+   Input
+   ========================== */
+const Keys={w:false,a:false,s:false,d:false,shift:false,jump:false,jumpPressed:false,interact:false,skullThrow:false};
+let mouseLocked=false,yaw=0,pitch=0;
+let leftMouseJust=false;
+
+window.addEventListener('keydown',e=>{
+    if(e.code==='KeyM'){ masterMuted=!masterMuted; return; }
+
+    if(inBoss){
+        handleBossKeyDown(e);
+        return;
+    }
+
+    switch(e.code){
+        case 'KeyW': Keys.w=true; break;
+        case 'KeyA': Keys.a=true; break;
+        case 'KeyS': Keys.s=true; break;
+        case 'KeyD': Keys.d=true; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': Keys.shift=true; break;
+        case 'Space':
+            if(!Keys.jump) Keys.jumpPressed=true;
+            Keys.jump=true;
+            break;
+        case 'KeyE': Keys.interact=true; break;
+        case 'KeyF': Keys.skullThrow=true; break;
+        case 'Enter': handleEnter(); break;
+        case 'Escape': togglePause(); break;
+        case 'KeyR':
+            if(paused && gameRunning && !gameEnded) restartGame();
+            break;
+    }
+});
+window.addEventListener('keyup',e=>{
+    if(inBoss){
+        handleBossKeyUp(e);
+        return;
+    }
+    switch(e.code){
+        case 'KeyW': Keys.w=false; break;
+        case 'KeyA': Keys.a=false; break;
+        case 'KeyS': Keys.s=false; break;
+        case 'KeyD': Keys.d=false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': Keys.shift=false; break;
+        case 'Space': Keys.jump=false; break;
+        case 'KeyE': Keys.interact=false; break;
+        case 'KeyF': Keys.skullThrow=false; break;
+    }
+});
+canvas.addEventListener('mousedown',e=>{
+    if(!mouseLocked && gameRunning && !paused && !inBoss){
+        requestPointerLock();
+    }
+    if(e.button===0) leftMouseJust=true;
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('pointerlockchange',()=>{
+    mouseLocked=(document.pointerLockElement===canvas);
+});
+document.addEventListener('mousemove',e=>{
+    if(!mouseLocked || !gameRunning || paused || inBoss) return;
+    const sensitivity=0.0025;
+    yaw+=e.movementX*sensitivity;
+    pitch-=e.movementY*sensitivity;
+    const maxPitch=Math.PI/4;
+    pitch=clamp(pitch,-maxPitch,maxPitch);
+});
+
+function requestPointerLock(){
+    canvas.requestPointerLock=canvas.requestPointerLock||canvas.mozRequestPointerLock;
+    if(canvas.requestPointerLock) canvas.requestPointerLock();
+}
+function exitPointerLock(){ if(document.exitPointerLock) document.exitPointerLock(); }
+
+/* ==========================
+   World / Map
+   ========================== */
+const MAP_W=24, MAP_H=16, TILE_SIZE=1;
+const map=[
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,
+    1,0,1,1,1,0,1,1,0,1,0,1,1,1,1,0,1,0,1,1,1,0,0,1,
+    1,0,1,0,1,0,1,0,0,0,0,1,0,0,1,0,1,0,1,0,1,0,0,1,
+    1,0,1,0,1,0,1,0,1,1,0,1,0,0,1,0,1,0,1,0,1,0,0,1,
+    1,0,1,0,0,0,1,0,0,0,0,1,0,0,1,0,0,0,1,0,1,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,
+    1,1,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,0,1,2,1,1,0,1,
+    1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,0,1,
+    1,0,1,0,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0,1,1,0,0,1,
+    1,0,1,0,0,0,0,1,0,0,0,1,0,0,1,0,0,1,0,0,0,0,0,1,
+    1,0,1,1,1,1,0,1,1,1,0,1,0,0,1,1,1,1,0,1,1,1,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,1, // باب المدرسة
+    1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+];
+function getTile(x,y){
+    if(x<0||y<0||x>=MAP_W||y>=MAP_H) return 1;
+    return map[y*MAP_W+x];
+}
+
+/* ==========================
+   Collision
+   ========================== */
+function isSolidAt(x,y){
+    const t=getTile(x|0,y|0);
+    if(t===1) return true;
+    for(let obj of objects){
+        if(obj.type==='door' && obj.tileX===(x|0) && obj.tileY===(y|0)){
+            if(obj.openAmount<0.9) return true;
+        }
+    }
+    return false;
+}
+function moveWithCollision(ent,dx,dy,r){
+    let nx=ent.x+dx;
+    if(!isSolidAt(nx+r,ent.y)&&!isSolidAt(nx-r,ent.y)) ent.x=nx;
+    let ny=ent.y+dy;
+    if(!isSolidAt(ent.x,ny+r)&&!isSolidAt(ent.x,ny-r)) ent.y=ny;
+}
+
+/* ==========================
+   Player
+   ========================== */
+const player={
+    x:3.5,y:6.5,
+    z:0,vz:0,
+    r:0.2,
+    speed:3.0,
+    runMul:1.6,
+    stamina:100,
+    maxStamina:100,
+    staminaRec:22,
+    noise:0,
+    onGround:true,
+    hasSkull:false
+};
+
+/* ==========================
+   Raycasting
+   ========================== */
+const FOV=Math.PI*0.72, HALF_FOV=FOV/2, MAX_VIEW_DIST=16;
+const NUM_RAYS=Math.floor(W/2), RAY_STEP=FOV/NUM_RAYS;
+function castRay(sx,sy,angle){
+    let sin=Math.sin(angle),cos=Math.cos(angle);
+    let dist=0,step=0.02,hit=null;
+    for(let i=0;i<MAX_VIEW_DIST/step;i++){
+        dist+=step;
+        let x=sx+cos*dist,y=sy+sin*dist;
+        let tx=x|0,ty=y|0,t=getTile(tx,ty);
+        if(t===1){hit={type:'wall',dist,tileX:tx,tileY:ty};break;}
+        else if(t===2||t===3){hit={type:'doorTile',dist,tileX:tx,tileY:ty,tileType:t};break;}
+    }
+    if(!hit) hit={type:'none',dist:MAX_VIEW_DIST};
+    return hit;
+}
+function hasLOS(x0,y0,x1,y1){
+    let dx=x1-x0,dy=y1-y0,dist=Math.hypot(dx,dy),steps=Math.floor(dist/0.05);
+    dx/=steps; dy/=steps;
+    let x=x0,y=y0;
+    for(let i=0;i<steps;i++){
+        x+=dx;y+=dy;
+        if(getTile(x|0,y|0)===1) return false;
+    }
+    return true;
+}
+
+/* ==========================
+   Objects: door, skull, ghosts
+   ========================== */
+let nextObjId=1;
+function makeDoor(x,y,vertical,locked,exitDoor,tileX,tileY){
+    return{ id:nextObjId++,type:'door',x,y,vertical,openAmount:0,locked,exitDoor:!!exitDoor,tileX,tileY };
+}
+function makeSkull(x,y){
+    return{ id:nextObjId++,type:'skull',x,y,radius:0.3,collected:false };
+}
+function makeGhost(x,y,name){
+    return{ id:nextObjId++,type:'ghost',x,y,name,radius:0.25,speed:2.5,active:false };
+}
+const objects=[];
+const mainClassDoor=makeDoor(9.5,1.5,true,false,false,9,1);
+const midDoor=makeDoor(19.5,7.0,false,true,false,19,7);
+const exitSchoolDoor=makeDoor(21.5,12.0,false,false,true,21,12);
+objects.push(mainClassDoor,midDoor,exitSchoolDoor);
+
+const skullObj=makeSkull(12.5,8.5);
+objects.push(skullObj);
+
+const ghostMiro=makeGhost(6.5,10.5,'ميرو');
+const ghostLala=makeGhost(14.5,8.5,'لالا');
+const ghostMohamed=makeGhost(17.5,10.5,'محمد');
+objects.push(ghostMiro,ghostLala,ghostMohamed);
+
+/* ==========================
+   Marwan
+   ========================== */
+const marwan={
+    x:12.5,y:11.5,
+    r:0.35,
+    speedBase:1.6,
+    speedAngry:3.2,
+    speed:1.6,
+    state:'idle', // idle, patrol, hunt
+    anger:0,
+    patrolPoints:[
+        {x:12.5,y:11.5},
+        {x:12.5,y:9.5},
+        {x:18.5,y:9.5},
+        {x:18.5,y:11.5}
+    ],
+    patrolIndex:0,
+    seenPlayer:false,
+    huntTimer:0
+};
+
+/* ==========================
+   Hook with limit
+   ========================== */
+const hook={
+    active:false,
+    x:0,y:0,
+    vx:0,vy:0,
+    range:4,
+    speed:10,
+    ammo:10,
+    maxAmmo:10,
+    regenTimer:0
+};
+
+/* ==========================
+   Hunt & ghosts
+   ========================== */
+let huntActive=false;
+function triggerHunt(){
+    if(huntActive) return;
+    huntActive=true;
+    marwan.state='hunt';
+    marwan.anger=8;
+    marwan.huntTimer=0;
+    ghostMiro.active=ghostLala.active=ghostMohamed.active=true;
+    // شاشة رسالة
+    huntMessage.style.display='flex';
+    setTimeout(()=>{ if(!inBoss) huntMessage.style.display='none'; },2000);
+    playMarwanChaseVoice();
+    screenShakeTime=0.8;
+}
+
+/* ==========================
+   Screen shake
+   ========================== */
+let screenShakeTime=0;
+function applyScreenShake(){
+    if(screenShakeTime<=0) return;
+    const intensity=screenShakeTime*8;
+    const dx=(Math.random()-0.5)*intensity;
+    const dy=(Math.random()-0.5)*intensity;
+    ctx.translate(dx,dy);
+}
+
+/* ==========================
+   Boss fight (2D) - محمد
+   ========================== */
+const boss={
+    active:false,
+    skulls:[],
+    playerX:W/2,
+    playerY:H-80,
+    playerSpeed:260,
+    throwCooldown:0,
+    mohamedX:W/2,
+    mohamedY:120,
+    mohamedDir:1,
+    mohamedSpeed:120,
+    hits:0,
+    maxHits:10,
+    spawnTimer:0,
+    smallMarwans:[]
+};
+function startBossFight(){
+    inBoss=true;
+    boss.active=true;
+    boss.skulls=[];
+    boss.playerX=W/2;
+    boss.playerY=H-80;
+    boss.throwCooldown=0;
+    boss.mohamedX=W/2;
+    boss.mohamedY=120;
+    boss.mohamedDir=1;
+    boss.mohamedSpeed=120;
+    boss.hits=0;
+    boss.spawnTimer=0;
+    boss.smallMarwans=[];
+    bossOverlay.style.display='flex';
+    setTimeout(()=>bossOverlay.style.display='none',3500);
+    exitPointerLock();
+}
+function endBossFight(success){
+    inBoss=false;
+    boss.active=false;
+    bossOverlay.style.display='none';
+    if(success){
+        // محمد مات، نرجّع اللاعب للمدرسة بدون مروان
+        marwan.state='gone';
+        ghostMiro.active=ghostLala.active=ghostMohamed.active=false;
+        huntActive=false;
+        objectiveText.textContent="ارجع لباب المدرسة للهروب (GOOD END).";
+    }else{
+        killPlayer("boss");
+    }
+}
+
+/* تحكم البوس */
+const bossKeys={left:false,right:false,throw:false};
+function handleBossKeyDown(e){
+    if(e.code==='ArrowLeft' || e.code==='KeyA') bossKeys.left=true;
+    if(e.code==='ArrowRight'|| e.code==='KeyD') bossKeys.right=true;
+    if(e.code==='KeyF') bossKeys.throw=true;
+}
+function handleBossKeyUp(e){
+    if(e.code==='ArrowLeft' || e.code==='KeyA') bossKeys.left=false;
+    if(e.code==='ArrowRight'|| e.code==='KeyD') bossKeys.right=false;
+    if(e.code==='KeyF') bossKeys.throw=false;
+}
+function updateBoss(dt){
+    if(!boss.active) return;
+    // حركة اللاعب
+    let dir=0;
+    if(bossKeys.left) dir-=1;
+    if(bossKeys.right) dir+=1;
+    boss.playerX+=dir*boss.playerSpeed*dt;
+    if(boss.playerX<40) boss.playerX=40;
+    if(boss.playerX>W-40) boss.playerX=W-40;
+
+    // رمي الجمجمة
+    boss.throwCooldown-=dt;
+    if(bossKeys.throw && boss.throwCooldown<=0){
+        boss.throwCooldown=0.3;
+        boss.skulls.push({x:boss.playerX,y:boss.playerY-20,vy:-260});
+        SFX.skullThrow();
+    }
+
+    // حركة محمد
+    boss.mohamedX+=boss.mohamedDir*boss.mohamedSpeed*dt;
+    if(boss.mohamedX<80){boss.mohamedX=80;boss.mohamedDir=1;}
+    if(boss.mohamedX>W-80){boss.mohamedX=W-80;boss.mohamedDir=-1;}
+
+    // سباون مروانات صغار
+    boss.spawnTimer+=dt;
+    if(boss.spawnTimer>=10){
+        boss.spawnTimer=0;
+        for(let i=0;i<3;i++){
+            boss.smallMarwans.push({
+                x:Math.random()<0.5?40:W-40,
+                y:H-140,
+                dir:Math.random()<0.5?1:-1,
+                speed:90
+            });
+        }
+    }
+
+    // تحديث جماجم
+    for(let s of boss.skulls){
+        s.y+=s.vy*dt;
+    }
+    boss.skulls=boss.skulls.filter(s=>s.y>-50);
+
+    // تحديث المروانات الصغار
+    for(let m of boss.smallMarwans){
+        m.x+=m.dir*m.speed*dt;
+        if(m.x<40){m.x=40;m.dir=1;}
+        if(m.x>W-40){m.x=W-40;m.dir=-1;}
+    }
+
+    // تصادم الجمجمة مع محمد
+    for(let s of boss.skulls){
+        if(Math.abs(s.x-boss.mohamedX)<40 && Math.abs(s.y-boss.mohamedY)<40){
+            boss.hits++;
+            SFX.skullHit();
+            s.y=-999;
+            if(boss.hits>=boss.maxHits){
+                endBossFight(true);
+                return;
+            }
+        }
+    }
+
+    // تصادم الجمجمة مع مروانات صغار
+    for(let m of boss.smallMarwans){
+        for(let s of boss.skulls){
+            if(Math.abs(s.x-m.x)<30 && Math.abs(s.y-m.y)<40){
+                s.y=-999;
+                m.dead=true;
+                SFX.skullHit();
+            }
+        }
+    }
+    boss.smallMarwans=boss.smallMarwans.filter(m=>!m.dead);
+
+    // لو محمد أو مروانات صغار لمسوا اللاعب
+    for(let m of boss.smallMarwans){
+        if(Math.abs(m.x-boss.playerX)<30 && Math.abs(m.y-boss.playerY)<40){
+            endBossFight(false);
+            return;
+        }
+    }
+    if(Math.abs(boss.mohamedX-boss.playerX)<40 && Math.abs(boss.mohamedY-boss.playerY)<50){
+        endBossFight(false);
+        return;
+    }
+}
+function renderBoss(){
+    ctx.clearRect(0,0,W,H);
+    // خلفية بسيطة
+    ctx.fillStyle='#111522';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#202840';
+    ctx.fillRect(0,H-120,W,120);
+
+    // محمد
+    ctx.fillStyle='#ffdd88';
+    ctx.fillRect(boss.mohamedX-40,boss.mohamedY-40,80,80); // flat body
+    ctx.fillStyle='#333';
+    ctx.fillRect(boss.mohamedX-10,boss.mohamedY-20,8,8);
+    ctx.fillRect(boss.mohamedX+2,boss.mohamedY-20,8,8);
+
+    // لاعب (flat)
+    ctx.fillStyle='#88ccff';
+    ctx.fillRect(boss.playerX-20,boss.playerY-40,40,40);
+
+    // مروانات صغار
+    ctx.fillStyle='#d080ff';
+    for(let m of boss.smallMarwans){
+        ctx.fillRect(m.x-15,m.y-30,30,30);
+    }
+
+    // جماجم
+    ctx.fillStyle='#f8f8f8';
+    for(let s of boss.skulls){
+        ctx.beginPath();
+        ctx.arc(s.x,s.y,10,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle='#000';
+        ctx.fillRect(s.x-4,s.y-2,3,3);
+        ctx.fillRect(s.x+1,s.y-2,3,3);
+        ctx.fillStyle='#f8f8f8';
+    }
+
+    // HUD صغير
+    ctx.fillStyle='#fff';
+    ctx.font='14px sans-serif';
+    ctx.fillText("Hits on محمد: "+boss.hits+" / "+boss.maxHits,20,20);
+}
+
+/* ==========================
+   LOS & ghosts
+   ========================== */
+function updateGhost(ghost,dt){
+    if(!ghost.active) return;
+    const dx=player.x-ghost.x,dy=player.y-ghost.y,dist=Math.hypot(dx,dy);
+    if(dist>12) return;
+    const vx=dx/dist*ghost.speed,vy=dy/dist*ghost.speed;
+    moveWithCollision(ghost,vx*dt,vy*dt,ghost.radius);
+    if(dist<ghost.radius+player.r*0.5){
+        killPlayer("ghost");
+    }
+}
+
+/* ==========================
+   Hook & skull throw
+   ========================== */
+function fireHook(){
+    if(hook.ammo<=0) return;
+    if(hook.active) return;
+    hook.active=true;
+    hook.x=player.x; hook.y=player.y;
+    const ang=yaw;
+    hook.vx=Math.cos(ang)*hook.speed;
+    hook.vy=Math.sin(ang)*hook.speed;
+    hook.ammo--;
+    SFX.hook();
+}
+function updateHook(dt){
+    // regen ammo
+    hook.regenTimer+=dt;
+    if(hook.regenTimer>=5){
+        hook.regenTimer=0;
+        if(hook.ammo<hook.maxAmmo) hook.ammo++;
+    }
+    if(!hook.active) return;
+    hook.x+=hook.vx*dt;
+    hook.y+=hook.vy*dt;
+    const dx0=hook.x-player.x,dy0=hook.y-player.y,dist=Math.hypot(dx0,dy0);
+    if(dist>hook.range || isSolidAt(hook.x,hook.y)){
+        hook.active=false; return;
+    }
+    const dx=marwan.x-hook.x,dy=marwan.y-hook.y;
+    if(dx*dx+dy*dy <= (marwan.r+0.2)*(marwan.r+0.2)){
+        marwan.anger=Math.max(0,marwan.anger-1);
+        marwan.speedBase*=0.9;
+        SFX.hookHit();
+        hook.active=false;
+    }
+    // لمس الأشباح
+    for(let g of [ghostMiro,ghostLala,ghostMohamed]){
+        const gx=g.x-hook.x,gy=g.y-hook.y;
+        if(g.active && gx*gx+gy*gy<=(g.radius+0.2)*(g.radius+0.2)){
+            g.speed=1.0;
+            hook.active=false;
+            SFX.hookHit();
+        }
+    }
+}
+
+/* Skull throw في 3D */
+let skullProjectile=null;
+function throwSkull(){
+    if(!player.hasSkull || skullProjectile) return;
+    const ang=yaw;
+    skullProjectile={
+        x:player.x,
+        y:player.y,
+        vx:Math.cos(ang)*6,
+        vy:Math.sin(ang)*6
+    };
+    SFX.skullThrow();
+}
+function updateSkull(dt){
+    if(!skullProjectile) return;
+    skullProjectile.x+=skullProjectile.vx*dt;
+    skullProjectile.y+=skullProjectile.vy*dt;
+    if(isSolidAt(skullProjectile.x,skullProjectile.y)){
+        skullProjectile=null;
+        return;
+    }
+    const dx=marwan.x-skullProjectile.x,dy=marwan.y-skullProjectile.y;
+    if(dx*dx+dy*dy <= (marwan.r+0.3)*(marwan.r+0.3)){
+        skullProjectile=null;
+        SFX.skullHit();
+        // بدء البوس فايت
+        startBossFight();
+    }
+}
+
+/* ==========================
+   Marwan + exit
+   ========================== */
+function killPlayer(type){
+    if(gameEnded) return;
+    gameEnded=true;
+    exitPointerLock();
+    jumpscareScreen.style.display='flex';
+    playMarwanEatVoice();
+    setTimeout(()=>{
+        jumpscareScreen.style.display='none';
+        endScreen.style.display='flex';
+        if(type==="ghost"){
+            endTitle.textContent="النهاية السيئة";
+            endText.textContent="العيال مسكوك بعد ما مروان نادَى عليهم.";
+        }else if(type==="boss"){
+            endTitle.textContent="فشلت في مواجهة محمد";
+            endText.textContent="الجماجم ارتدت عليك… ومحمد ضحك آخر ضحكة.";
+        }else{
+            endTitle.textContent="مروان أكلك";
+            endText.textContent="مروان ما بيهزرش… انت بقيت جزء من حصته الأبدية.";
+        }
+    },1200);
+}
+function checkExit(){
+    const t=getTile(player.x|0,player.y|0);
+    if(t===3){
+        if(huntActive && marwan.state==='hunt' && marwan.state!=='gone'){
+            // BAD END
+            if(!gameEnded){
+                gameEnded=true;
+                exitPointerLock();
+                endScreen.style.display='flex';
+                endTitle.textContent="BAD ENDING";
+                endText.textContent="النهاية السيئة\nهربت وانت مروان بينده للعيال، سبت المدرسة لهم للأبد.";
+            }
+        }else if(marwan.state==='gone' && skullProjectile===null && !inBoss){
+            // GOOD END
+            if(!gameEnded){
+                gameEnded=true;
+                exitPointerLock();
+                endScreen.style.display='flex';
+                endTitle.textContent="GOOD ENDING";
+                endText.textContent="هزمت محمد، ومروان اختفى، وخرجت من المدرسة.\nبس الجمجمة لسه في دماغك.";
+            }
+        }
+    }
+}
+
+/* رؤية مروان */
+function updateMarwan(dt){
+    if(marwan.state==='gone') return;
+    // سرعة حسب الغضب
+    marwan.speed=marwan.speedBase+marwan.anger*0.25;
+    if(marwan.speed>marwan.speedAngry) marwan.speed=marwan.speedAngry;
+
+    const dx=player.x-marwan.x,dy=player.y-marwan.y,dist=Math.hypot(dx,dy);
+    let sees=false;
+    if(dist<8 && hasLOS(marwan.x,marwan.y,player.x,player.y)){
+        sees=true;
+        marwan.seenPlayer=true;
+    }
+
+    if(sees && !huntActive){
+        triggerHunt();
+    }
+
+    if(marwan.state==='idle'){
+        marwan.state='patrol';
+    }
+
+    if(marwan.state==='patrol'){
+        const p=marwan.patrolPoints[marwan.patrolIndex];
+        const dxp=p.x-marwan.x,dyp=p.y-marwan.y,d=Math.hypot(dxp,dyp);
+        if(d<0.1){
+            marwan.patrolIndex=(marwan.patrolIndex+1)%marwan.patrolPoints.length;
+        }else{
+            const vx=dxp/d*marwan.speedBase,vy=dyp/d*marwan.speedBase;
+            moveWithCollision(marwan,vx*dt,vy*dt,marwan.r);
+            if(Math.random()<0.2*dt) SFX.marwanStep();
+        }
+    }else if(marwan.state==='hunt'){
+        marwan.huntTimer+=dt;
+        const vx=dx/dist*marwan.speed,vy=dy/dist*marwan.speed;
+        moveWithCollision(marwan,vx*dt,vy*dt,marwan.r);
+        if(Math.random()<0.6*dt) SFX.marwanStep();
+        if(dist<marwan.r+player.r*0.5) killPlayer("marwan");
+    }
+
+    if(marwan.anger<3) dangerText.textContent="هادئ";
+    else if(marwan.anger<6) dangerText.textContent="متوتر";
+    else dangerText.textContent="غاضب!";
+}
+
+/* ==========================
+   Interact: skull + door
+   ========================== */
+function interact(){
+    const range=1.3;
+    const ang=yaw;
+    const dirX=Math.cos(ang),dirY=Math.sin(ang);
+    let best=null,bestDist=range;
+    for(let obj of objects){
+        const dx=obj.x-player.x,dy=obj.y-player.y,dist=Math.hypot(dx,dy);
+        if(dist>range) continue;
+        const dot=(dx*dirX+dy*dirY)/(dist||1);
+        if(dot<0.3) continue;
+
+        if(obj.type==='skull' && !obj.collected){
+            if(dist<bestDist){best=obj;bestDist=dist;}
+        }
+        if(obj.type==='door'){
+            // باب المدرسة / الباب الوسط
+            if(dist<range){
+                if(!obj.locked){
+                    obj.openAmount=1;
+                    SFX.door();
+                }else{
+                    SFX.error();
+                }
+            }
+        }
+    }
+    if(best && best.type==='skull'){
+        best.collected=true;
+        player.hasSkull=true;
+        objectiveText.textContent="ارمي الجمجمة على مروان بـ F لتبدأ المعركة.";
+    }
+}
+
+/* ==========================
+   World to screen & rendering
+   ========================== */
+function worldToScreen(x,y){
+    const dx=x-player.x,dy=y-player.y;
+    const angle=Math.atan2(dy,dx)-yaw;
+    let ang=angle;
+    while(ang<-Math.PI) ang+=2*Math.PI;
+    while(ang>Math.PI) ang-=2*Math.PI;
+    if(Math.abs(ang)>HALF_FOV+0.4) return null;
+    const dist=Math.hypot(dx,dy);
+    const planeDist=(W/2)/Math.tan(FOV/2);
+    const xScreen=W/2 + Math.tan(ang)*planeDist;
+    const size=(1/dist)*planeDist;
+    const yScreen=H/2 - size*0.6 - player.z*20;
+    return{ x:xScreen,y:yScreen,size,dist };
+}
+
+/* draw sprites */
+function drawSkullSprite(p,base){
+    const w=base*p.size,h=base*p.size;
+    ctx.fillStyle='#f8f8f8';
+    ctx.beginPath();
+    ctx.arc(p.x,p.y-h*0.4,h*0.3,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.fillRect(p.x-h*0.15,p.y-h*0.45,h*0.08,h*0.08);
+    ctx.fillRect(p.x+h*0.07,p.y-h*0.45,h*0.08,h*0.08);
+}
+function drawMarwanSprite(p,base){
+    const w=base*p.size,h=base*p.size*1.6;
+    const x=p.x-w/2,y=p.y-h;
+    ctx.fillStyle='#2a2c4d';
+    ctx.fillRect(x,y+0.4*h,w,0.6*h);
+    ctx.fillStyle='#f0d7b0';
+    ctx.beginPath();
+    ctx.arc(p.x,y+0.25*h,0.2*h,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = marwan.anger>5?'#ffdd66':'#111';
+    ctx.fillRect(p.x-0.07*h,y+0.18*h,0.05*h,0.05*h);
+    ctx.fillRect(p.x+0.02*h,y+0.18*h,0.05*h,0.05*h);
+}
+function drawGhostSprite(ghost,p,base){
+    const w=base*p.size,h=base*p.size*1.4;
+    const x=p.x-w/2,y=p.y-h;
+    let color='#88ccff';
+    if(ghost.name==='لالا') color='#ff99dd';
+    if(ghost.name==='محمد') color='#ffee88';
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.ellipse(p.x,y+0.6*h,w/2,0.6*h,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x,y+0.25*h,0.18*h,0,Math.PI*2);
+    ctx.fillStyle='#fdfdfd';
+    ctx.fill();
+    ctx.fillStyle='#111';
+    ctx.fillRect(p.x-0.06*h,y+0.18*h,0.04*h,0.04*h);
+    ctx.fillRect(p.x+0.02*h,y+0.18*h,0.04*h,0.04*h);
+}
+function drawHookSprite(p,base){
+    const w=base*p.size,h=base*p.size;
+    const x=p.x-w/2,y=p.y-h/2;
+    ctx.fillStyle='#d0d0d0';
+    ctx.fillRect(x,y,w,h*0.3);
+    ctx.beginPath();
+    ctx.arc(p.x+w*0.3,y+h*0.15,h*0.25,Math.PI*0.3,Math.PI*1.7);
+    ctx.strokeStyle='#f0f0f0';
+    ctx.lineWidth=2;
+    ctx.stroke();
+}
+function drawSkullProjectileSprite(p,base){
+    const w=base*p.size;
+    ctx.fillStyle='#f8f8f8';
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,w*0.3,0,Math.PI*2);
+    ctx.fill();
+}
+
+/* render 3D */
+function render3D(){
+    ctx.clearRect(0,0,W,H);
+    ctx.save();
+    applyScreenShake();
+
+    // سقف
+    ctx.fillStyle='#151929';
+    ctx.fillRect(0,0,W,H/2);
+    // أرضية
+    ctx.fillStyle='#22252f';
+    ctx.fillRect(0,H/2,W,H/2);
+
+    const planeDist=(W/2)/Math.tan(FOV/2);
+
+    for(let i=0;i<NUM_RAYS;i++){
+        const rayScreenX=-HALF_FOV + i*RAY_STEP;
+        const rayAngle=yaw + rayScreenX;
+        const hit=castRay(player.x,player.y,rayAngle);
+        let dist=hit.dist*Math.cos(rayScreenX);
+        let colorWall='#c0c4d0',colorDoor='#85624a',colorExit='#3f7a3d';
+        let color=colorWall;
+        if(hit.type==='doorTile'){
+            if(hit.tileType===2) color=colorDoor;
+            else if(hit.tileType===3) color=colorExit;
+        }
+        let shade=1/(1+dist*dist*0.08); shade=clamp(shade,0.15,1);
+        if(hit.type==='doorTile'){
+            for(let o of objects){
+                if(o.type==='door' && o.tileX===hit.tileX && o.tileY===hit.tileY){
+                    dist=dist+(1-o.openAmount)*0.5; break;
+                }
+            }
+        }
+        const h=(TILE_SIZE/dist)*planeDist;
+        const lineH=h*1.5;
+        const y0=(H/2)-lineH,y1=(H/2)+lineH;
+        const r=Math.floor(parseInt(color.substr(1,2),16)*shade);
+        const g=Math.floor(parseInt(color.substr(3,2),16)*shade);
+        const b=Math.floor(parseInt(color.substr(5,2),16)*shade);
+        ctx.beginPath();
+        ctx.strokeStyle=`rgb(${r},${g},${b})`;
+        ctx.moveTo(i*2,y0);
+        ctx.lineTo(i*2,y1);
+        ctx.stroke();
+    }
+
+    // sprites
+    const sprites=[];
+    function pushSprite(x,y,base,drawFn,entity){
+        const p=worldToScreen(x,y);
+        if(!p) return;
+        sprites.push({p,base,drawFn,entity});
+    }
+    if(!skullObj.collected) pushSprite(skullObj.x,skullObj.y,1.0,(p,b)=>drawSkullSprite(p,b));
+    if(marwan.state!=='gone') pushSprite(marwan.x,marwan.y,1.6,(p,b)=>drawMarwanSprite(p,b));
+    for(let g of [ghostMiro,ghostLala,ghostMohamed]) if(g.active) pushSprite(g.x,g.y,1.3,(p,b)=>drawGhostSprite(g,p,b));
+    if(hook.active) pushSprite(hook.x,hook.y,0.6,(p,b)=>drawHookSprite(p,b));
+    if(skullProjectile){
+        const p=worldToScreen(skullProjectile.x,skullProjectile.y);
+        if(p) sprites.push({p,base:0.8,drawFn:(p,b)=>drawSkullProjectileSprite(p,b)});
+    }
+
+    sprites.sort((a,b)=>b.p.dist-a.p.dist);
+    for(let s of sprites){
+        s.drawFn(s.p,s.base);
+    }
+
+    // السلاح تحت
+    ctx.fillStyle='#161b24';
+    ctx.fillRect(W/2-70,H-40,140,40);
+    ctx.fillStyle='#d0d0d0';
+    ctx.fillRect(W/2-40,H-30,80,20);
+
+    ctx.restore();
+}
+
+/* ==========================
+   Update 3D
+   ========================== */
+let lastTime=performance.now();
+function update3D(dt){
+    if(!gameRunning||paused||gameEnded||inBoss) return;
+
+    // stamina & noise
+    if(Keys.shift && (Keys.w||Keys.a||Keys.s||Keys.d)){
+        player.stamina-=40*dt;
+        if(player.stamina<0) player.stamina=0;
+        player.noise+=45*dt;
+    }else{
+        player.stamina+=player.staminaRec*dt;
+        if(player.stamina>player.maxStamina) player.stamina=player.maxStamina;
+        player.noise*=0.9;
+    }
+    if(player.noise<0) player.noise=0;
+
+    // move
+    let mx=0,my=0;
+    let sp=player.speed;
+    if(Keys.shift && player.stamina>5) sp*=player.runMul;
+    if(Keys.w){mx+=Math.cos(yaw)*sp; my+=Math.sin(yaw)*sp;}
+    if(Keys.s){mx-=Math.cos(yaw)*sp; my-=Math.sin(yaw)*sp;}
+    if(Keys.a){mx+=Math.cos(yaw-Math.PI/2)*sp; my+=Math.sin(yaw-Math.PI/2)*sp;}
+    if(Keys.d){mx+=Math.cos(yaw+Math.PI/2)*sp; my+=Math.sin(yaw+Math.PI/2)*sp;}
+    if(mx||my){
+        const len=Math.hypot(mx,my)||1;
+        mx=(mx/len)*sp; my=(my/len)*sp;
+        moveWithCollision(player,mx*dt,my*dt,player.r);
+        if(Math.random()<0.6*dt) SFX.step();
+        player.noise+=18*dt;
+    }
+
+    // jump
+    if(player.onGround && Keys.jumpPressed){player.onGround=false;player.vz=4;}
+    Keys.jumpPressed=false;
+    if(!player.onGround){
+        player.vz-=12*dt;
+        player.z+=player.vz*dt;
+        if(player.z<=0){player.z=0;player.vz=0;player.onGround=true;}
+    }
+
+    // hook
+    if(leftMouseJust){leftMouseJust=false;fireHook();}
+    updateHook(dt);
+
+    // skull throw
+    if(Keys.skullThrow){Keys.skullThrow=false;throwSkull();}
+    updateSkull(dt);
+
+    // interact
+    if(Keys.interact){Keys.interact=false;interact();}
+
+    // doors
+    for(let o of objects){
+        if(o.type==='door'){
+            const target=o.locked?0:1;
+            o.openAmount+=(target-o.openAmount)*6*dt;
+        }
+    }
+
+    // marwan & ghosts
+    updateMarwan(dt);
+    updateGhost(ghostMiro,dt);
+    updateGhost(ghostLala,dt);
+    updateGhost(ghostMohamed,dt);
+
+    // exit
+    checkExit();
+
+    // shake timer
+    if(screenShakeTime>0) screenShakeTime-=dt;
+
+    // UI
+    staminaText.textContent=player.stamina.toFixed(0);
+    noiseText.textContent=player.noise.toFixed(0);
+    hookText.textContent=hook.ammo.toFixed(0)+" / "+hook.maxAmmo;
+}
+
+/* ==========================
+   Main loop
+   ========================== */
+function gameLoop(ts){
+    const dt=Math.min(0.033,(ts-lastTime)/1000);
+    lastTime=ts;
+
+    if(inBoss){
+        updateBoss(dt);
+        renderBoss();
+    }else{
+        update3D(dt);
+        render3D();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+/* ==========================
+   Start / pause / restart
+   ========================== */
+function handleEnter(){
+    if(!gameRunning && !gameEnded){
+        startGame();
+    }else if(gameEnded){
+        endScreen.style.display='none';
+        restartGame();
+    }
+}
+function startGame(){
+    gameRunning=true;
+    paused=false;
+    gameEnded=false;
+    mainMenu.style.display='none';
+    SFX.ensure();
+    resetGameState();
+}
+function resetGameState(){
+    player.x=3.5;player.y=6.5;player.z=0;player.vz=0;
+    player.stamina=player.maxStamina;player.noise=0;
+    player.hasSkull=false;
+    skullObj.collected=false;
+
+    yaw=0;pitch=0;
+
+    marwan.x=12.5;marwan.y=11.5;
+    marwan.anger=0;marwan.state='idle';marwan.patrolIndex=0;marwan.seenPlayer=false;huntActive=false;
+
+    ghostMiro.x=6.5;ghostMiro.y=10.5;ghostMiro.active=false;ghostMiro.speed=2.5;
+    ghostLala.x=14.5;ghostLala.y=8.5;ghostLala.active=false;ghostLala.speed=2.5;
+    ghostMohamed.x=17.5;ghostMohamed.y=10.5;ghostMohamed.active=false;ghostMohamed.speed=2.5;
+
+    hook.active=false;hook.ammo=hook.maxAmmo;hook.regenTimer=0;
+    skullProjectile=null;
+    inBoss=false;
+    boss.active=false;
+    bossOverlay.style.display='none';
+    huntMessage.style.display='none';
+    jumpscareScreen.style.display='none';
+
+    objectiveText.textContent="استكشف المدرسة وابحث عن الجمجمة.";
+    dangerText.textContent="هادئ";
+}
+function restartGame(){
+    resetGameState();
+    pauseMenu.style.display='none';
+    gameEnded=false;
+    paused=false;
+}
+function togglePause(){
+    if(!gameRunning||gameEnded||inBoss) return;
+    paused=!paused;
+    pauseMenu.style.display=paused?'flex':'none';
+    if(!paused) lastTime=performance.now();
+    else exitPointerLock();
+}
+
+/* ==========================
+   Init loop
+   ========================== */
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
